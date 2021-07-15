@@ -1,6 +1,0 @@
-# github.com/vrecan/death v3.0.1+incompatible
-## explicit
-github.com/vrecan/death
-# github.com/yjp19871013/event-bus v0.0.2
-## explicit
-github.com/yjp19871013/event-bus/eventbus

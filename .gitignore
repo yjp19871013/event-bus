@@ -15,3 +15,4 @@
 # vendor/
 .idea/
 **/example/vendor/
+**/example/go.mod

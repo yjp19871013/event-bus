@@ -10,7 +10,7 @@ import (
 const (
 	dealEventRoutingCount = 5
 	startBlockEventCount  = 50
-	maxSubscribersCount   = 10000000
+	maxSubscribersCount   = 1000000
 )
 
 const (

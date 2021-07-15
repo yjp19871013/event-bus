@@ -129,11 +129,13 @@ func (bus *EventBus) Publish(label string, event interface{}) {
 
 	subscribers := bus.getLabelSubscribers(label)
 	for subscriber := range subscribers {
-		bus.selectDealEventChan() <- &eventQueueItem{
+		item := &eventQueueItem{
 			label:      label,
 			subscriber: subscriber,
 			event:      event,
 		}
+
+		bus.selectDealEventChan() <- item
 	}
 }
 
@@ -144,11 +146,13 @@ func (bus *EventBus) PublishToLabels(labelEventMap map[string]interface{}) {
 	for label, event := range labelEventMap {
 		subscribers := bus.getLabelSubscribers(label)
 		for subscriber := range subscribers {
-			bus.selectDealEventChan() <- &eventQueueItem{
+			item := &eventQueueItem{
 				label:      label,
 				subscriber: subscriber,
 				event:      event,
 			}
+
+			bus.selectDealEventChan() <- item
 		}
 	}
 }
@@ -159,6 +163,10 @@ func (bus *EventBus) doDealEvent(dealEventChan chan *eventQueueItem) {
 		case <-bus.dealEventDoneChan:
 			return
 		case item := <-dealEventChan:
+			if item == nil {
+				continue
+			}
+
 			go item.subscriber.OnEvent(item.label, item.event)
 		}
 	}

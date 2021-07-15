@@ -217,18 +217,7 @@ func (bus *EventBus) deleteLabels(labels []string, subscriber Subscriber) {
 			continue
 		}
 
-		_, ok = subscribers[subscriber]
-		if !ok {
-			continue
-		}
-
-		delete(subscribers, subscriber)
-
-		if len(subscribers) == 0 {
-			delete(bus.labelMap, label)
-		} else {
-			bus.labelMap[label] = subscribers
-		}
+		bus.deleteLabelWithoutLock(subscribers, label, subscriber)
 	}
 }
 
@@ -255,18 +244,22 @@ func (bus *EventBus) deleteFromAllLabels(subscriber Subscriber) {
 	}
 
 	for label, subscribers := range bus.labelMap {
-		_, ok := subscribers[subscriber]
-		if !ok {
-			continue
-		}
+		bus.deleteLabelWithoutLock(subscribers, label, subscriber)
+	}
+}
 
-		delete(subscribers, subscriber)
+func (bus *EventBus) deleteLabelWithoutLock(subscribers map[Subscriber]interface{}, label string, subscriber Subscriber) {
+	_, ok := subscribers[subscriber]
+	if !ok {
+		return
+	}
 
-		if len(subscribers) == 0 {
-			delete(bus.labelMap, label)
-		} else {
-			bus.labelMap[label] = subscribers
-		}
+	delete(subscribers, subscriber)
+
+	if len(subscribers) == 0 {
+		delete(bus.labelMap, label)
+	} else {
+		bus.labelMap[label] = subscribers
 	}
 }
 

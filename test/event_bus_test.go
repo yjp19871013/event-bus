@@ -1,7 +1,7 @@
 package test
 
 import (
-	"event-bus/eventbus"
+	"github.com/yjp19871013/event-bus/eventbus"
 	"strconv"
 	"sync"
 	"testing"

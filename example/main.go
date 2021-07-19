@@ -10,8 +10,7 @@ import (
 )
 
 const (
-	beatHeartEventLabel = "receive beat heart"
-	tickerDurationSec   = 3
+	tickerDurationSec = 3
 )
 
 type BeatHeartEvent struct {
@@ -21,13 +20,9 @@ type BeatHeartEvent struct {
 type Subscriber struct {
 }
 
-func (s *Subscriber) OnEvent(label string, event interface{}) {
-	if label == beatHeartEventLabel {
-		e, ok := event.(*BeatHeartEvent)
-		if !ok {
-			return
-		}
-
+func (s *Subscriber) OnEvent(event *eventbus) {
+	if event.PublishTypeName == "BeatHeartEvent" {
+		e := event.PublishEvent.(*BeatHeartEvent)
 		fmt.Println("receive: ", e.Time)
 	}
 }
@@ -36,7 +31,7 @@ func main() {
 	subscriber := &Subscriber{}
 
 	eventbus.InitEventBus(10, 5)
-	err := eventbus.GetBus().RegisterSubscriber(subscriber, beatHeartEventLabel)
+	err := eventbus.GetBus().RegisterSubscriber(subscriber, &BeatHeartEvent{})
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +55,7 @@ func beatHeart(bus *eventbus.EventBus, done chan interface{}) {
 		case <-done:
 			return
 		case <-ticker.C:
-			bus.Publish(beatHeartEventLabel, &BeatHeartEvent{Time: time.Now().Format("2006-01-02 15:04:05")})
+			bus.Publish(&BeatHeartEvent{Time: time.Now().Format("2006-01-02 15:04:05")})
 		}
 	}
 }

@@ -2,39 +2,54 @@ package eventbus
 
 import (
 	"math/rand"
+	"reflect"
 	"sync"
 	"time"
 )
 
 type eventQueueItem struct {
-	label      string
+	eventType  string
 	subscriber Subscriber
 	event      interface{}
 }
 
+type Event struct {
+	PublishTypeName string
+	PublishEvent    interface{}
+}
+
 type Subscriber interface {
-	OnEvent(label string, event interface{})
+	OnEvent(event *Event)
 }
 
 type EventBus struct {
-	sync.Mutex
-
 	dealEventChannels []chan *eventQueueItem
 	dealEventDoneChan chan interface{}
 
-	labelMapMutex sync.Mutex
-	labelMap      map[string]map[Subscriber]interface{}
+	eventMapMutex sync.Mutex
+	eventMap      map[string]map[Subscriber]interface{}
 }
 
 var busInstance *EventBus
+var busInstanceMutex sync.Mutex
 
 func GetBus() *EventBus {
+	busInstanceMutex.Lock()
+	busInstanceMutex.Unlock()
+
 	return busInstance
 }
 
 func InitEventBus(startBlockEventCount uint, dealEventRoutingCount uint8) {
+	busInstanceMutex.Lock()
+	defer busInstanceMutex.Unlock()
+
+	if busInstance != nil {
+		panic("repeated call of InitEventBus")
+	}
+
 	busInstance = new(EventBus)
-	busInstance.labelMap = make(map[string]map[Subscriber]interface{})
+	busInstance.eventMap = make(map[string]map[Subscriber]interface{})
 	busInstance.dealEventChannels = make([]chan *eventQueueItem, 0)
 	busInstance.dealEventDoneChan = make(chan interface{})
 
@@ -53,12 +68,12 @@ func InitEventBus(startBlockEventCount uint, dealEventRoutingCount uint8) {
 }
 
 func DestroyEventBus() {
+	busInstanceMutex.Lock()
+	defer busInstanceMutex.Unlock()
+
 	if busInstance == nil {
 		return
 	}
-
-	busInstance.Lock()
-	defer busInstance.Unlock()
 
 	close(busInstance.dealEventDoneChan)
 	busInstance.dealEventDoneChan = nil
@@ -70,88 +85,59 @@ func DestroyEventBus() {
 
 	busInstance.dealEventChannels = make([]chan *eventQueueItem, 0)
 
-	busInstance.destroyLabelMap()
+	busInstance.destroyEventMap()
 
 	busInstance = nil
 }
 
-func (bus *EventBus) RegisterSubscriber(subscriber Subscriber, labels ...string) error {
-	if subscriber == nil || labels == nil || len(labels) == 0 {
+func (bus *EventBus) RegisterSubscriber(subscriber Subscriber, events ...interface{}) error {
+	if subscriber == nil || events == nil || len(events) == 0 {
 		return ErrParam
 	}
 
-	bus.Lock()
-	defer bus.Unlock()
-
-	bus.addLabels(labels, subscriber)
+	bus.addEvents(events, subscriber)
 
 	return nil
 }
 
-func (bus *EventBus) UnRegisterSubscriber(subscriber Subscriber, labels ...string) error {
-	if subscriber == nil || labels == nil || len(labels) == 0 {
+func (bus *EventBus) UnRegisterSubscriber(subscriber Subscriber, events ...interface{}) error {
+	if subscriber == nil || events == nil || len(events) == 0 {
 		return ErrParam
 	}
 
-	bus.Lock()
-	defer bus.Unlock()
-
-	bus.deleteLabels(labels, subscriber)
+	bus.deleteEvents(events, subscriber)
 
 	return nil
 }
 
-func (bus *EventBus) RegisterAllExistLabel(subscriber Subscriber) error {
+func (bus *EventBus) RegisterAllExistEvents(subscriber Subscriber) error {
 	if subscriber == nil {
 		return ErrParam
 	}
 
-	bus.Lock()
-	defer bus.Unlock()
-
-	bus.addToAllLabels(subscriber)
+	bus.addToAllEvents(subscriber)
 
 	return nil
 }
 
-func (bus *EventBus) UnRegisterAllLabel(subscriber Subscriber) error {
+func (bus *EventBus) UnRegisterAllEvents(subscriber Subscriber) error {
 	if subscriber == nil {
 		return ErrParam
 	}
 
-	bus.Lock()
-	defer bus.Unlock()
-
-	bus.deleteFromAllLabels(subscriber)
+	bus.deleteFromAllEvents(subscriber)
 
 	return nil
 }
 
-func (bus *EventBus) Publish(label string, event interface{}) {
-	bus.Lock()
-	defer bus.Unlock()
+func (bus *EventBus) Publish(events ...interface{}) {
+	for _, event := range events {
+		t := reflect.TypeOf(event).Elem()
 
-	subscribers := bus.getLabelSubscribers(label)
-	for subscriber := range subscribers {
-		item := &eventQueueItem{
-			label:      label,
-			subscriber: subscriber,
-			event:      event,
-		}
-
-		bus.selectDealEventChan() <- item
-	}
-}
-
-func (bus *EventBus) PublishToLabels(labelEventMap map[string]interface{}) {
-	bus.Lock()
-	defer bus.Unlock()
-
-	for label, event := range labelEventMap {
-		subscribers := bus.getLabelSubscribers(label)
+		subscribers := bus.getEventSubscribers(t.Name())
 		for subscriber := range subscribers {
 			item := &eventQueueItem{
-				label:      label,
+				eventType:  t.Name(),
 				subscriber: subscriber,
 				event:      event,
 			}
@@ -171,7 +157,10 @@ func (bus *EventBus) doDealEvent(dealEventChan chan *eventQueueItem) {
 				continue
 			}
 
-			go item.subscriber.OnEvent(item.label, item.event)
+			go item.subscriber.OnEvent(&Event{
+				PublishTypeName: item.eventType,
+				PublishEvent:    item.event,
+			})
 		}
 	}
 }
@@ -180,79 +169,84 @@ func (bus *EventBus) selectDealEventChan() chan *eventQueueItem {
 	return bus.dealEventChannels[rand.Intn(len(bus.dealEventChannels))]
 }
 
-func (bus *EventBus) destroyLabelMap() {
-	bus.labelMapMutex.Lock()
-	defer bus.labelMapMutex.Unlock()
+func (bus *EventBus) destroyEventMap() {
+	bus.eventMapMutex.Lock()
+	defer bus.eventMapMutex.Unlock()
 
-	bus.labelMap = make(map[string]map[Subscriber]interface{})
+	bus.eventMap = make(map[string]map[Subscriber]interface{})
 }
 
-func (bus *EventBus) addLabels(labels []string, subscriber Subscriber) {
-	bus.labelMapMutex.Lock()
-	defer bus.labelMapMutex.Unlock()
+func (bus *EventBus) addEvents(events []interface{}, subscriber Subscriber) {
+	bus.eventMapMutex.Lock()
+	defer bus.eventMapMutex.Unlock()
 
-	if bus.labelMap == nil {
+	if bus.eventMap == nil {
 		return
 	}
 
-	for _, label := range labels {
-		subscribers, ok := bus.labelMap[label]
+	for _, event := range events {
+		t := reflect.TypeOf(event).Elem()
+
+		subscribers, ok := bus.eventMap[t.Name()]
 		if !ok {
 			subscribers = make(map[Subscriber]interface{}, 0)
 		}
 
 		subscribers[subscriber] = nil
 
-		bus.labelMap[label] = subscribers
+		bus.eventMap[t.Name()] = subscribers
 	}
 }
 
-func (bus *EventBus) deleteLabels(labels []string, subscriber Subscriber) {
-	bus.labelMapMutex.Lock()
-	defer bus.labelMapMutex.Unlock()
+func (bus *EventBus) deleteEvents(events []interface{}, subscriber Subscriber) {
+	bus.eventMapMutex.Lock()
+	defer bus.eventMapMutex.Unlock()
 
-	if bus.labelMap == nil || len(bus.labelMap) == 0 {
+	if bus.eventMap == nil || len(bus.eventMap) == 0 {
 		return
 	}
 
-	for _, label := range labels {
-		subscribers, ok := bus.labelMap[label]
+	for _, event := range events {
+		t := reflect.TypeOf(event).Elem()
+
+		subscribers, ok := bus.eventMap[t.Name()]
 		if !ok {
 			continue
 		}
 
-		bus.deleteLabelWithoutLock(subscribers, label, subscriber)
+		bus.deleteEventWithoutLock(subscribers, t.Name(), subscriber)
 	}
 }
 
-func (bus *EventBus) addToAllLabels(subscriber Subscriber) {
-	bus.labelMapMutex.Lock()
-	defer bus.labelMapMutex.Unlock()
+func (bus *EventBus) addToAllEvents(subscriber Subscriber) {
+	bus.eventMapMutex.Lock()
+	defer bus.eventMapMutex.Unlock()
 
-	if bus.labelMap == nil || len(bus.labelMap) == 0 {
+	if bus.eventMap == nil || len(bus.eventMap) == 0 {
 		return
 	}
 
-	for label, subscribers := range bus.labelMap {
+	for eventType, subscribers := range bus.eventMap {
 		subscribers[subscriber] = nil
-		bus.labelMap[label] = subscribers
+		bus.eventMap[eventType] = subscribers
 	}
 }
 
-func (bus *EventBus) deleteFromAllLabels(subscriber Subscriber) {
-	bus.labelMapMutex.Lock()
-	defer bus.labelMapMutex.Unlock()
+func (bus *EventBus) deleteFromAllEvents(subscriber Subscriber) {
+	bus.eventMapMutex.Lock()
+	defer bus.eventMapMutex.Unlock()
 
-	if bus.labelMap == nil || len(bus.labelMap) == 0 {
+	if bus.eventMap == nil || len(bus.eventMap) == 0 {
 		return
 	}
 
-	for label, subscribers := range bus.labelMap {
-		bus.deleteLabelWithoutLock(subscribers, label, subscriber)
+	for eventType, subscribers := range bus.eventMap {
+		bus.deleteEventWithoutLock(subscribers, eventType, subscriber)
 	}
 }
 
-func (bus *EventBus) deleteLabelWithoutLock(subscribers map[Subscriber]interface{}, label string, subscriber Subscriber) {
+func (bus *EventBus) deleteEventWithoutLock(subscribers map[Subscriber]interface{},
+	eventType string, subscriber Subscriber) {
 	_, ok := subscribers[subscriber]
 	if !ok {
 		return
@@ -261,21 +255,21 @@ func (bus *EventBus) deleteLabelWithoutLock(subscribers map[Subscriber]interface
 	delete(subscribers, subscriber)
 
 	if len(subscribers) == 0 {
-		delete(bus.labelMap, label)
+		delete(bus.eventMap, eventType)
 	} else {
-		bus.labelMap[label] = subscribers
+		bus.eventMap[eventType] = subscribers
 	}
 }
 
-func (bus *EventBus) getLabelSubscribers(label string) map[Subscriber]interface{} {
-	bus.labelMapMutex.Lock()
-	defer bus.labelMapMutex.Unlock()
+func (bus *EventBus) getEventSubscribers(eventType string) map[Subscriber]interface{} {
+	bus.eventMapMutex.Lock()
+	defer bus.eventMapMutex.Unlock()
 
-	if bus.labelMap == nil || len(bus.labelMap) == 0 {
+	if bus.eventMap == nil || len(bus.eventMap) == 0 {
 		return make(map[Subscriber]interface{})
 	}
 
-	subscribers, ok := bus.labelMap[label]
+	subscribers, ok := bus.eventMap[eventType]
 	if !ok {
 		return make(map[Subscriber]interface{})
 	}

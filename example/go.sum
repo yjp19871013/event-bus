@@ -10,8 +10,8 @@ github.com/smartystreets/goconvey v1.6.4 h1:fv0U8FUIMPNf1L9lnHLvLhgicrIVChEkdzIK
 github.com/smartystreets/goconvey v1.6.4/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=
 github.com/vrecan/death v3.0.1+incompatible h1:hYRRqrdyoUAbymk2KJ8tNHmZFKcVeThRUySCqwC5Itg=
 github.com/vrecan/death v3.0.1+incompatible/go.mod h1:ektTae4lwvcXJ7pytrLb2N0w7mwhzmu+f5vRHYzy33E=
-github.com/yjp19871013/event-bus v0.1.3 h1:dm46aMhY5ww9731aQinHq/oYF41fux3CWNaisvR9luI=
-github.com/yjp19871013/event-bus v0.1.3/go.mod h1:4CmD8vbckQA5NAtwZulvIjcdZuz100fexA8ulgx3B1c=
+github.com/yjp19871013/event-bus v0.1.4 h1:Q40QzCm2f6N2rAjKhF7pTV/sLpX9oWKWDMJWZI362K4=
+github.com/yjp19871013/event-bus v0.1.4/go.mod h1:tGQMoOvdOQ5N53G6r2vV/QRahl2VATIv4B9FtNQWVGA=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/net v0.0.0-20190311183353-d8887717615a/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

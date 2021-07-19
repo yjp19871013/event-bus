@@ -20,7 +20,7 @@ type BeatHeartEvent struct {
 type Subscriber struct {
 }
 
-func (s *Subscriber) OnEvent(event *eventbus) {
+func (s *Subscriber) OnEvent(event *eventbus.Event) {
 	if event.PublishTypeName == "BeatHeartEvent" {
 		e := event.PublishEvent.(*BeatHeartEvent)
 		fmt.Println("receive: ", e.Time)

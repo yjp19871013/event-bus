@@ -70,33 +70,33 @@ func TestOnePublisherAndOneSubscriber(t *testing.T) {
 
 	subscriber.WaitGroup.Add(3)
 
-	bus := eventbus.NewEventBus(startBlockEventCount, dealEventRoutingCount)
+	eventbus.InitEventBus(startBlockEventCount, dealEventRoutingCount)
 
-	err := bus.RegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
+	err := eventbus.GetBus().RegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
 	if err != nil {
 		t.Fatal("bus.RegisterSubscriber", err)
 	}
 
-	bus.Publish(eventLabel1, &Event{
+	eventbus.GetBus().Publish(eventLabel1, &Event{
 		Content: eventContent1,
 	})
 
-	bus.Publish(eventLabel2, &Event{
+	eventbus.GetBus().Publish(eventLabel2, &Event{
 		Content: eventContent2,
 	})
 
-	bus.Publish(eventLabel3, &Event{
+	eventbus.GetBus().Publish(eventLabel3, &Event{
 		Content: eventContent3,
 	})
 
 	subscriber.WaitGroup.Wait()
 
-	err = bus.UnRegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
+	err = eventbus.GetBus().UnRegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
 	if err != nil {
 		t.Fatal("bus.UnRegisterSubscriber", err)
 	}
 
-	eventbus.DestroyEventBus(bus)
+	eventbus.DestroyEventBus()
 }
 
 func TestUnRegisterAllLabel(t *testing.T) {
@@ -116,44 +116,44 @@ func TestUnRegisterAllLabel(t *testing.T) {
 
 	subscriber2.WaitGroup.Add(3)
 
-	bus := eventbus.NewEventBus(startBlockEventCount, dealEventRoutingCount)
+	eventbus.InitEventBus(startBlockEventCount, dealEventRoutingCount)
 
-	err := bus.RegisterSubscriber(&subscriber1, eventLabel1, eventLabel2, eventLabel3)
+	err := eventbus.GetBus().RegisterSubscriber(&subscriber1, eventLabel1, eventLabel2, eventLabel3)
 	if err != nil {
 		t.Fatal("subscriber1 bus.RegisterSubscriber", err)
 	}
 
-	err = bus.RegisterAllExistLabel(&subscriber2)
+	err = eventbus.GetBus().RegisterAllExistLabel(&subscriber2)
 	if err != nil {
 		t.Fatal("subscriber2 bus.RegisterAllExistLabel", err)
 	}
 
-	bus.Publish(eventLabel1, &Event{
+	eventbus.GetBus().Publish(eventLabel1, &Event{
 		Content: eventContent1,
 	})
 
-	bus.Publish(eventLabel2, &Event{
+	eventbus.GetBus().Publish(eventLabel2, &Event{
 		Content: eventContent2,
 	})
 
-	bus.Publish(eventLabel3, &Event{
+	eventbus.GetBus().Publish(eventLabel3, &Event{
 		Content: eventContent3,
 	})
 
 	subscriber1.WaitGroup.Wait()
 	subscriber2.WaitGroup.Wait()
 
-	err = bus.UnRegisterAllLabel(&subscriber2)
+	err = eventbus.GetBus().UnRegisterAllLabel(&subscriber2)
 	if err != nil {
 		t.Fatal("subscriber2 bus.UnRegisterAllLabel", err)
 	}
 
-	err = bus.UnRegisterAllLabel(&subscriber1)
+	err = eventbus.GetBus().UnRegisterAllLabel(&subscriber1)
 	if err != nil {
 		t.Fatal("subscriber1 bus.UnRegisterAllLabel", err)
 	}
 
-	eventbus.DestroyEventBus(bus)
+	eventbus.DestroyEventBus()
 }
 
 func TestPublishToLabels(t *testing.T) {
@@ -165,18 +165,18 @@ func TestPublishToLabels(t *testing.T) {
 
 	subscriber.WaitGroup.Add(3)
 
-	bus := eventbus.NewEventBus(startBlockEventCount, dealEventRoutingCount)
+	eventbus.InitEventBus(startBlockEventCount, dealEventRoutingCount)
 
-	err := bus.RegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
+	err := eventbus.GetBus().RegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
 	if err != nil {
 		t.Fatal("bus.RegisterSubscriber", err)
 	}
 
-	bus.Publish(eventLabel1, &Event{
+	eventbus.GetBus().Publish(eventLabel1, &Event{
 		Content: eventContent1,
 	})
 
-	bus.PublishToLabels(map[string]interface{}{
+	eventbus.GetBus().PublishToLabels(map[string]interface{}{
 		eventLabel2: &Event{
 			Content: eventContent2,
 		},
@@ -187,16 +187,16 @@ func TestPublishToLabels(t *testing.T) {
 
 	subscriber.WaitGroup.Wait()
 
-	err = bus.UnRegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
+	err = eventbus.GetBus().UnRegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
 	if err != nil {
 		t.Fatal("bus.UnRegisterSubscriber", err)
 	}
 
-	eventbus.DestroyEventBus(bus)
+	eventbus.DestroyEventBus()
 }
 
 func TestManySubscribers(t *testing.T) {
-	bus := eventbus.NewEventBus(startBlockEventCount, dealEventRoutingCount)
+	eventbus.InitEventBus(startBlockEventCount, dealEventRoutingCount)
 
 	subscribers := make([]*Subscriber, 0)
 	for i := 0; i < maxSubscribersCount; i++ {
@@ -208,7 +208,7 @@ func TestManySubscribers(t *testing.T) {
 
 		subscriber.WaitGroup.Add(3)
 
-		err := bus.RegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
+		err := eventbus.GetBus().RegisterSubscriber(&subscriber, eventLabel1, eventLabel2, eventLabel3)
 		if err != nil {
 			t.Fatal(subscriber.id, "bus.RegisterSubscriber", err)
 		}
@@ -216,7 +216,7 @@ func TestManySubscribers(t *testing.T) {
 		subscribers = append(subscribers, &subscriber)
 	}
 
-	bus.PublishToLabels(map[string]interface{}{
+	eventbus.GetBus().PublishToLabels(map[string]interface{}{
 		eventLabel1: &Event{
 			Content: eventContent1,
 		},
@@ -231,11 +231,11 @@ func TestManySubscribers(t *testing.T) {
 	for _, subscriber := range subscribers {
 		subscriber.WaitGroup.Wait()
 
-		err := bus.UnRegisterSubscriber(subscriber, eventLabel1, eventLabel2, eventLabel3)
+		err := eventbus.GetBus().UnRegisterSubscriber(subscriber, eventLabel1, eventLabel2, eventLabel3)
 		if err != nil {
 			t.Fatal(subscriber.id, "bus.UnRegisterSubscriber", err)
 		}
 	}
 
-	eventbus.DestroyEventBus(bus)
+	eventbus.DestroyEventBus()
 }

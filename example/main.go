@@ -35,14 +35,14 @@ func (s *Subscriber) OnEvent(label string, event interface{}) {
 func main() {
 	subscriber := &Subscriber{}
 
-	bus := eventbus.NewEventBus(10, 5)
-	err := bus.RegisterSubscriber(subscriber, beatHeartEventLabel)
+	eventbus.InitEventBus(10, 5)
+	err := eventbus.GetBus().RegisterSubscriber(subscriber, beatHeartEventLabel)
 	if err != nil {
 		panic(err)
 	}
 
 	done := make(chan interface{})
-	go beatHeart(bus, done)
+	go beatHeart(eventbus.GetBus(), done)
 
 	death := DEATH.NewDeath(syscall.SIGINT, syscall.SIGTERM)
 	_ = death.WaitForDeath()

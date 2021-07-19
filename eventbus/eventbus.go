@@ -26,11 +26,17 @@ type EventBus struct {
 	labelMap      map[string]map[Subscriber]interface{}
 }
 
-func NewEventBus(startBlockEventCount uint, dealEventRoutingCount uint8) *EventBus {
-	bus := new(EventBus)
-	bus.labelMap = make(map[string]map[Subscriber]interface{})
-	bus.dealEventChannels = make([]chan *eventQueueItem, 0)
-	bus.dealEventDoneChan = make(chan interface{})
+var busInstance *EventBus
+
+func GetBus() *EventBus {
+	return busInstance
+}
+
+func InitEventBus(startBlockEventCount uint, dealEventRoutingCount uint8) {
+	busInstance = new(EventBus)
+	busInstance.labelMap = make(map[string]map[Subscriber]interface{})
+	busInstance.dealEventChannels = make([]chan *eventQueueItem, 0)
+	busInstance.dealEventDoneChan = make(chan interface{})
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -40,35 +46,33 @@ func NewEventBus(startBlockEventCount uint, dealEventRoutingCount uint8) *EventB
 
 	for i := 0; i < int(dealEventRoutingCount); i++ {
 		dealEventChan := make(chan *eventQueueItem, startBlockEventCount)
-		bus.dealEventChannels = append(bus.dealEventChannels, dealEventChan)
+		busInstance.dealEventChannels = append(busInstance.dealEventChannels, dealEventChan)
 
-		go bus.doDealEvent(dealEventChan)
+		go busInstance.doDealEvent(dealEventChan)
 	}
-
-	return bus
 }
 
-func DestroyEventBus(bus *EventBus) {
-	if bus == nil {
+func DestroyEventBus() {
+	if busInstance == nil {
 		return
 	}
 
-	bus.Lock()
-	defer bus.Unlock()
+	busInstance.Lock()
+	defer busInstance.Unlock()
 
-	close(bus.dealEventDoneChan)
-	bus.dealEventDoneChan = nil
+	close(busInstance.dealEventDoneChan)
+	busInstance.dealEventDoneChan = nil
 
-	for _, dealEventChan := range bus.dealEventChannels {
+	for _, dealEventChan := range busInstance.dealEventChannels {
 		close(dealEventChan)
 		dealEventChan = nil
 	}
 
-	bus.dealEventChannels = make([]chan *eventQueueItem, 0)
+	busInstance.dealEventChannels = make([]chan *eventQueueItem, 0)
 
-	bus.destroyLabelMap()
+	busInstance.destroyLabelMap()
 
-	bus = nil
+	busInstance = nil
 }
 
 func (bus *EventBus) RegisterSubscriber(subscriber Subscriber, labels ...string) error {

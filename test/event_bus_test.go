@@ -64,10 +64,6 @@ func (s *Subscriber) OnEvent(event *eventbus.Event) {
 	}
 }
 
-type Event struct {
-	Content string
-}
-
 func TestOnePublisherAndOneSubscriber(t *testing.T) {
 	subscriber := Subscriber{
 		id:        "1",

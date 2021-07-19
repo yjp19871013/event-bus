@@ -1,7 +1,0 @@
-# github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
-## explicit
-# github.com/smartystreets/goconvey v1.6.4
-## explicit
-# github.com/vrecan/death v3.0.1+incompatible
-## explicit
-github.com/vrecan/death
